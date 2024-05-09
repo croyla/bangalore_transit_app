@@ -6,8 +6,6 @@ import 'package:transit_app/models/routes.dart';
 import 'package:transit_app/models/stops.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
 import 'home.dart';
 
 
@@ -47,7 +45,7 @@ class Data {
   static List<TransitStop> stops = [];
   static List<TransitRoute> routes = [];
   static Geodesy geodesy = Geodesy();
-  static void completeMappings(){
+  static void completeMappings() async {
     Map<String, List<TransitStop>> stopNames = {};
     Map<String, TransitRoute> routeNames = {};
     for (TransitStop stop in stops){
@@ -94,6 +92,15 @@ class Data {
           }
         }
       }
+    }
+    for (TransitStop stop in stops){
+      if(stop.routeIds.isEmpty){
+        stops.remove(stop);
+      }
+    }
+    if (kDebugMode) {
+      print('TOTAL STOPS IN USE ${Data.stops.length}');
+      print('TOTAL ROUTES IN USE ${Data.routes.length}');
     }
     // add list of routes to stops and list of stops to routes
 
