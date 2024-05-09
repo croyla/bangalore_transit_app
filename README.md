@@ -1,16 +1,15 @@
-# transit_app
+# bangalore_transit_app
 
-A new Flutter project.
+A highly unoptimized unusable application built in flutter. The goal of this application is to find all possible (metro / bus) lines and transfers from point a to point b. It is not optimised and needs to be tweaked to be used on a functional basis.
 
-## Getting Started
+ - Data for BMTC from [Vonter github repo](https://github.com/Vonter/open-bmtc)
+ - Data for Namma Metro (BMRCL) from [geohacker github repo](https://github.com/geohacker/namma-metro?)
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# To-Do
+### (in no particular order)
+ - [ ] Asynchronously update search results to map widget
+ - [ ] Add widgets to modify walking distance parameter, max transfers parameter, etc.
+ - [ ] Implement a database for data storage as opposed to the current (always reading from) geojson implementation
+ - [ ] Modify metro data to be able to be parsed correctly by application
+ - [ ] Display information like line names, stop names on the map (using tappable polylines or popup markers)
+ - [ ] Store timing information where available to display as well
