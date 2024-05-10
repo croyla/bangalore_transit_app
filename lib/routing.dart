@@ -45,7 +45,19 @@ RouteSuggestion? createSuggestion(TransitStop start, TransitStop end, List<Trans
       nearestEnd = point;
     }
   }
-  if(routePolyline.indexOf(nearestStart!) > routePolyline.indexOf(nearestEnd!)){
+  if(
+  (routePolyline.indexOf(nearestStart!) > routePolyline.indexOf(nearestEnd!)) ||
+      (geodesy.distanceBetweenTwoGeoPoints(nearestStart, start.marker) > 400) || // leniency of 400 meters in case polyline is inaccurate
+      (geodesy.distanceBetweenTwoGeoPoints(nearestEnd, end.marker) > 400)){
+    if(geodesy.distanceBetweenTwoGeoPoints(nearestStart, start.marker) > 400) {
+      routes[0].stopIds.remove(start);
+      start.routeIds.remove(routes[0]);
+    }
+    if(geodesy.distanceBetweenTwoGeoPoints(nearestEnd, start.marker) > 400) {
+      routes[0].stopIds.remove(end);
+      end.routeIds.remove(routes[0]);
+    }
+
     if(routes.length > 1){
       return createSuggestion(start, end, routes.sublist(1)); // trim by one
     }

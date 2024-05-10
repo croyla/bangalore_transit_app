@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_tappable_polyline/flutter_map_tappable_polyline.dart';
 import 'package:geodesy/geodesy.dart';
 import 'package:transit_app/main.dart';
 import 'package:transit_app/models/stops.dart';
@@ -22,10 +23,13 @@ State<HomePage> createState() => _HomePageState();
 
 class _HomePageState extends State<HomePage> {
   String _point = 'Start';
+  String _polylineInfo = '';
+  String _journeyInfo = '';
   TransitStop? _start;
   TransitStop? _end;
   final MapController mapController = MapController();
-  List<Polyline> _polylines = [];
+  Map<TaggedPolyline, RouteSuggestion> _polylines = {};
+  Map<TaggedPolyline, List<RouteSuggestion>> _polylineJourney = {};
   List<Marker> _markers = [for (TransitStop stop in Data.stops as List)
     Marker(point: stop.marker,
       width: 4,
@@ -50,7 +54,7 @@ class _HomePageState extends State<HomePage> {
             )
         )
       ];
-      _polylines = [];
+      _polylines = {};
       _point = 'Start';
       _start = null;
       _end = null;
@@ -104,7 +108,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
   void _updateOnMap() async {
-    List<List<RouteSuggestion>> journeys = await getRoutes(3, 100, _start!, _end!); // all time is taken here
+    List<List<RouteSuggestion>> journeys = await getRoutes(2, 100, _start!, _end!); // all time is taken here
     setState(() {
       if(!mounted){
         if (kDebugMode) {
@@ -138,15 +142,28 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.blue
               )
           ));
-          _polylines.add(
-              Polyline(points: // add random to see multiple different journeys
-              [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 100000), point.longitude + (random / 100000))],
-                  color: color, strokeWidth: 5)
-          );
-          color = Color.fromARGB(color.alpha, color.red + 5, color.green + 5, color.blue + 5);
-          mapController.move(suggestion.polyline[0], mapController.camera.zoom);
+          TaggedPolyline polyline = TaggedPolyline(points: // add random to see multiple different journeys
+          [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 100000), point.longitude + (random / 100000))],
+              color: color, strokeWidth: 4);
+          _polylines[polyline] = suggestion;
+          _polylineJourney[polyline] = suggestions;
+          color = Color.lerp(color, Colors.black, 0.2)!;
         }
       }
+      if(journeys.isNotEmpty) {
+        mapController.move(
+            journeys[0][0].start.marker, mapController.camera.zoom);
+      }
+    });
+  }
+  void polylineInfo(polylines, position) {
+    setState(() {
+      RouteSuggestion info = _polylines[polylines[0]]!;
+      _polylineInfo = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in info.lines) '${line.name},']}';
+      _journeyInfo =
+              '${_polylineJourney[polylines[0]]![0].start.name}'
+                  ' ➡️ ${[for (RouteSuggestion suggestion in _polylineJourney[polylines[0]]!)
+                    '${suggestion.end.name} via ${[for (TransitRoute line in suggestion.lines) '${line.name}, ']} ➡️']}';
     });
   }
   @override
@@ -168,10 +185,11 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Expanded(
-              flex: 80,
+              flex: 70,
               child: FlutterMap(
                 mapController: mapController,
                 options: const MapOptions(
+
                   initialCenter: LatLng(12.967099, 77.587909),
                   initialZoom: 12.0,
                 ),
@@ -188,8 +206,11 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ]
                   ),
-                  PolylineLayer(
-                      polylines: _polylines
+                  TappablePolylineLayer(
+                      polylineCulling: true,
+                      pointerDistanceTolerance: 20,
+                      polylines: List.from(_polylines.keys),
+                    onTap: polylineInfo,
                   ),
                   MarkerLayer(
                       markers: _markers
@@ -205,19 +226,21 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Expanded(
-              flex: 10,
+              flex: 5,
               child: CupertinoButton(
                 onPressed: _setPoint,
                 child: Text('Add $_point'),
               ),
             ),
             Expanded(
-              flex: 10,
+              flex: 5,
               child: CupertinoButton(
                 onPressed: _clearMap,
                 child: const Text('Clear map'),
               ),
             ),
+            Expanded(flex: 5, child: Text(_polylineInfo)),
+            Expanded(flex: 10, child: Text(_journeyInfo)),
           ],
         ),
       ),
