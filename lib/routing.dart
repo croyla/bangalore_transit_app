@@ -51,7 +51,7 @@ RouteSuggestion? createSuggestion(TransitStop start, TransitStop end, List<Trans
     }
     return null; // return null none found
   }
-  List<LatLng> suggestionPolyline = routePolyline.sublist(routePolyline.indexOf(nearestStart!), routePolyline.indexOf(nearestEnd!));
+  List<LatLng> suggestionPolyline = routePolyline.sublist(routePolyline.indexOf(nearestStart), routePolyline.indexOf(nearestEnd));
   suggestionPolyline.insert(0, start.marker);
   suggestionPolyline.add(end.marker);
   return RouteSuggestion(polyline: suggestionPolyline,
@@ -61,7 +61,7 @@ RouteSuggestion? createSuggestion(TransitStop start, TransitStop end, List<Trans
   // currently inaccurate with multiple TransitRoutes that go to same stop from different polylines, need to improve
 }
 
-List<List<RouteSuggestion>> getRoutes(int maxTransfers, double walkingDistance, TransitStop start, TransitStop end){
+Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDistance, TransitStop start, TransitStop end) async {
   List<TransitStop> ends = getNearbyStops(walkingDistance, end);
   List<TransitStop> starts = getNearbyStops(walkingDistance, start);
   Map<TransitStop, Map<TransitStop,RouteSuggestion>> lines = {}; // first dimension start and second dimension stop
@@ -130,6 +130,7 @@ List<List<RouteSuggestion>> getRoutes(int maxTransfers, double walkingDistance, 
               TransitStop next = transferLine[current]![0];
               line.add(next);
               lineRoute[next] = transferLine[current]![1];
+              print('${next.name} ➡️ ${lineRoute[next]?.name} ➡️ ${current?.name}');
               current = next;
             } else {
               break;
@@ -138,7 +139,7 @@ List<List<RouteSuggestion>> getRoutes(int maxTransfers, double walkingDistance, 
           current = null;
           for(TransitStop stop in line.reversed){
             if(current != null && lineRoute[current] != null){
-              addLine(current, stop, lineRoute[current]!);
+              addLine(current, stop, lineRoute[current]!); // TODO: Somehow asynchronously update map with info from here, while allowing the multiple bus lines this way allows
             }
             current = stop;
             if(lineRoute[stop] == null) {
@@ -170,7 +171,8 @@ List<List<RouteSuggestion>> getRoutes(int maxTransfers, double walkingDistance, 
                 }
                 // print('Near ${stop.name} is ${nearby.name}');
                 transferLine2[nearby] = [stop,
-                  TransitRoute(id: -1, stopIds: [stop, nearby], name: 'Walk ${stop.name} ➡️ ${nearby.name}', routeId: 'walk', polyline: [stop.marker, nearby.marker])];
+                  TransitRoute(id: -1, stopIds: [stop, nearby], name: 'Walk ${stop.name} ➡ ${nearby.name}', routeId: 'walk', polyline: [
+                    stop.marker, geodesy.midPointBetweenTwoGeoPoints(stop.marker, nearby.marker), nearby.marker])];
                 recursiveSearch(transferCount+1, nearby, route, transferLine2);
               }
             }

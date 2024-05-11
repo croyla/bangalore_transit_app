@@ -95,43 +95,57 @@ class _HomePageState extends State<HomePage> {
                 )
             )
         );
-        _markers.clear();
-        for(List<RouteSuggestion> suggestions in getRoutes(1, 100, _start!, _end!)){
-          if (kDebugMode) {
-            print('READING SUGGESTIONS LIST ${[for (RouteSuggestion suggestion in suggestions) [suggestion.start.name, suggestion.end.name]]}');
-          }
-          Color color = Colors.primaries[Random().nextInt(Colors.primaries.length)];
-          for(RouteSuggestion suggestion in suggestions){
-            if (kDebugMode) {
-              print('READING SUGGESTION ${[suggestion.start.name, suggestion.end.name]} WITH ROUTES ${[for (TransitRoute lines in suggestion.lines) lines.name]}');
-            }
-            _markers.add(Marker(
-              point: suggestion.start.marker,
-              width: 7,
-              height: 7,
-              child: Container(
-                color: Colors.green
-              )
-            ));
-            _markers.add(Marker(
-                point: suggestion.end.marker,
-                width: 7,
-                height: 7,
-                child: Container(
-                    color: Colors.blue
-                )
-            ));
-            _polylines.add(
-                Polyline(points: suggestion.polyline, color: color, strokeWidth: 5)
-            );
-            color = Color.fromARGB(color.alpha, color.red + 5, color.green + 5, color.blue + 5);
-            mapController.move(suggestion.polyline[0], mapController.camera.zoom);
-          }
-        }
+        _updateOnMap();
         // _polylines.add(
         //   Polyline(points: [_start!.marker, _end!.marker], color: Colors.redAccent) // TEST
         // );
         _point = 'Disabled';
+      }
+    });
+  }
+  void _updateOnMap() async {
+    List<List<RouteSuggestion>> journeys = await getRoutes(3, 100, _start!, _end!); // all time is taken here
+    setState(() {
+      if(!mounted){
+        if (kDebugMode) {
+          print('??? CONFUSION');
+        }
+      }
+      _markers.clear();
+      for(List<RouteSuggestion> suggestions in journeys){
+        if (kDebugMode) {
+          print('READING SUGGESTIONS LIST ${[for (RouteSuggestion suggestion in suggestions) [suggestion.start.name, suggestion.end.name]]}');
+        }
+        Color color = Colors.primaries[Random().nextInt(Colors.primaries.length)];
+        int random = Random().nextInt(9);
+        for(RouteSuggestion suggestion in suggestions){
+          if (kDebugMode) {
+            print('READING SUGGESTION ${[suggestion.start.name, suggestion.end.name]} WITH ROUTES ${[for (TransitRoute lines in suggestion.lines) lines.name]}');
+          }
+          _markers.add(Marker(
+              point: suggestion.start.marker,
+              width: 7,
+              height: 7,
+              child: Container(
+                  color: Colors.green
+              )
+          ));
+          _markers.add(Marker(
+              point: suggestion.end.marker,
+              width: 7,
+              height: 7,
+              child: Container(
+                  color: Colors.blue
+              )
+          ));
+          _polylines.add(
+              Polyline(points: // add random to see multiple different journeys
+              [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 100000), point.longitude + (random / 100000))],
+                  color: color, strokeWidth: 5)
+          );
+          color = Color.fromARGB(color.alpha, color.red + 5, color.green + 5, color.blue + 5);
+          mapController.move(suggestion.polyline[0], mapController.camera.zoom);
+        }
       }
     });
   }
