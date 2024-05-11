@@ -7,10 +7,8 @@ A highly unoptimized unusable application built in flutter. The goal of this app
 
 # To-Do
 ### (in no particular order)
- - [ ] Asynchronously update search results to map widget
  - [ ] Add widgets to modify walking distance parameter, max transfers parameter, etc.
  - [ ] Implement a database for data storage as opposed to the current (always reading from) geojson implementation
  - [ ] Modify metro data to be able to be parsed correctly by application
- - [ ] Display information like line names, stop names on the map (using tappable polylines or popup markers)
  - [ ] Store timing information where available to display as well
  - [ ] SIFT THROUGH AND CLEAN GTFS DATA!!!
