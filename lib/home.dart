@@ -23,27 +23,22 @@ State<HomePage> createState() => _HomePageState();
 
 class _HomePageState extends State<HomePage> {
   String _point = 'Start';
-  String _polylineInfo = '';
-  String _journeyInfo = '';
+  String _info1 = '';
+  String _info2 = '';
   TransitStop? _start;
   TransitStop? _end;
   final MapController mapController = MapController();
-  Map<TaggedPolyline, RouteSuggestion> _polylines = {};
-  Map<TaggedPolyline, List<RouteSuggestion>> _polylineJourney = {};
-  List<Marker> _markers = [for (TransitStop stop in Data.stops as List)
-    Marker(point: stop.marker,
-      width: 4,
-      height: 4,
-      child: Container(
-        color: Colors.white10,
-      )
-    )
-  ];
+  final Map<TaggedPolyline, RouteSuggestion> _polylines = {};
+  final Map<TaggedPolyline, List<RouteSuggestion>> _polylineJourney = {};
+  final Map<Marker, TransitStop> _markers = {};
   Geodesy geodesy = Data.geodesy;
   /* Clear map points and lines, set _point to default */
   void _clearMap() {
+    Data.updateData();
     setState(() {
-      _markers = [for (TransitStop stop in Data.stops as List)
+      _markers.clear();
+      for(TransitStop stop in Data.stops){
+        _markers[
         Marker(point: stop.marker,
             width: 24,
             height: 24,
@@ -53,8 +48,10 @@ class _HomePageState extends State<HomePage> {
               color: Colors.black,
             )
         )
-      ];
-      _polylines = {};
+        ] = stop;
+      }
+      _polylines.clear();
+      _polylineJourney.clear();
       _point = 'Start';
       _start = null;
       _end = null;
@@ -76,29 +73,29 @@ class _HomePageState extends State<HomePage> {
       }
       if(_point == 'Start') {
         _start = nearest;
-        _markers.add(
+        _markers[
             Marker(
               point: _start!.marker,
-              width: 7,
-              height: 7,
+              width: 10,
+              height: 15,
               child: Container(
-                color: Colors.green,
+                color: Colors.black,
               )
             )
-        );
+        ] = nearest!;
         _point = 'End';
       } else if(_point == 'End') {
         _end = nearest;
-        _markers.add(
+        _markers[
             Marker(
                 point: _end!.marker,
-                width: 7,
-                height: 7,
+                width: 10,
+                height: 15,
                 child: Container(
-                  color: Colors.blue,
+                  color: Colors.black,
                 )
             )
-        );
+        ] = nearest!;
         _updateOnMap();
         // _polylines.add(
         //   Polyline(points: [_start!.marker, _end!.marker], color: Colors.redAccent) // TEST
@@ -123,25 +120,26 @@ class _HomePageState extends State<HomePage> {
         Color color = Colors.primaries[Random().nextInt(Colors.primaries.length)];
         int random = Random().nextInt(9);
         for(RouteSuggestion suggestion in suggestions){
+          suggestion.lines.sort((TransitRoute a, TransitRoute b) => a.departures.compareTo(b.departures));
           if (kDebugMode) {
             print('READING SUGGESTION ${[suggestion.start.name, suggestion.end.name]} WITH ROUTES ${[for (TransitRoute lines in suggestion.lines) lines.name]}');
           }
-          _markers.add(Marker(
+          _markers[Marker(
               point: suggestion.start.marker,
               width: 7,
               height: 7,
               child: Container(
                   color: Colors.green
               )
-          ));
-          _markers.add(Marker(
+          )] = suggestion.start;
+          _markers[Marker(
               point: suggestion.end.marker,
               width: 7,
               height: 7,
               child: Container(
                   color: Colors.blue
               )
-          ));
+          )] = suggestion.end;
           TaggedPolyline polyline = TaggedPolyline(points: // add random to see multiple different journeys
           [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 100000), point.longitude + (random / 100000))],
               color: color, strokeWidth: 4);
@@ -159,12 +157,30 @@ class _HomePageState extends State<HomePage> {
   void polylineInfo(polylines, position) {
     setState(() {
       RouteSuggestion info = _polylines[polylines[0]]!;
-      _polylineInfo = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in info.lines) '${line.name},']}';
-      _journeyInfo =
+      _info1 = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in info.lines) '${line.name},']}';
+      _info2 =
               '${_polylineJourney[polylines[0]]![0].start.name}'
                   ' ➡️ ${[for (RouteSuggestion suggestion in _polylineJourney[polylines[0]]!)
                     '${suggestion.end.name} via ${[for (TransitRoute line in suggestion.lines) '${line.name}, ']} ➡️']}';
     });
+  }
+  void _markerInfo(TapPosition position, LatLng location){
+    Marker? toDisplay;
+    for(Marker marker in _markers.keys){
+      if(geodesy.distanceBetweenTwoGeoPoints(location, marker.point) < 250){
+        toDisplay ??= marker;
+        if(geodesy.distanceBetweenTwoGeoPoints(location, marker.point) < geodesy.distanceBetweenTwoGeoPoints(location, toDisplay.point)){
+          toDisplay = marker;
+        }
+      }
+    }
+    if(toDisplay != null){
+      print('${_markers[toDisplay]!.name} ${_markers[toDisplay]!.stopId} is empty? ${_markers[toDisplay]!.routeIds.isEmpty}');
+      setState(() {
+        _info1 = 'Stop Name: ${_markers[toDisplay]!.name}';
+        _info2 = 'Routes: ${[for(TransitRoute route in _markers[toDisplay]!.routeIds) '${route.name}, ']}';
+      });
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -188,9 +204,9 @@ class _HomePageState extends State<HomePage> {
               flex: 70,
               child: FlutterMap(
                 mapController: mapController,
-                options: const MapOptions(
-
-                  initialCenter: LatLng(12.967099, 77.587909),
+                options: MapOptions(
+                  onTap: _markerInfo,
+                  initialCenter: const LatLng(12.967099, 77.587909),
                   initialZoom: 12.0,
                 ),
                 children: [
@@ -213,7 +229,7 @@ class _HomePageState extends State<HomePage> {
                     onTap: polylineInfo,
                   ),
                   MarkerLayer(
-                      markers: _markers
+                      markers: List.from(_markers.keys)
                   ),
                   Center(
                     child: Container(
@@ -239,8 +255,8 @@ class _HomePageState extends State<HomePage> {
                 child: const Text('Clear map'),
               ),
             ),
-            Expanded(flex: 5, child: Text(_polylineInfo)),
-            Expanded(flex: 10, child: Text(_journeyInfo)),
+            Expanded(flex: 5, child: Text(_info1)),
+            Expanded(flex: 10, child: Text(_info2)),
           ],
         ),
       ),

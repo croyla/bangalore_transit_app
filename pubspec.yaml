@@ -31,7 +31,6 @@ dependencies:
   url_launcher: any
   flutter_map: ^6.0.1
   flutter_map_tappable_polyline: any
-  flutter_map_marker_popup: ^6.1.2
   path: any
   sqflite: any
   geodesy: any

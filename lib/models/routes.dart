@@ -1,5 +1,6 @@
 
 
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:transit_app/models/stops.dart';
 
@@ -10,6 +11,7 @@ class TransitRoute{
   final String routeId;
   final List<LatLng> polyline;
   final Map<String, dynamic>? rawJson; // used for completing mappings if built fromJson
+  final int departures;
   TransitRoute.fromJson(Map<String, dynamic> json, this.id):
         name = json['properties']['name'] as String,
         routeId = '${json['properties']['id']}${json['properties']['direction_id']}',
@@ -17,7 +19,8 @@ class TransitRoute{
         [for (List<dynamic> t in json['geometry']['coordinates'])[t[1] as double, t[0] as double]])
           LatLng(coords[0] as double, coords[1] as double)],
         stopIds = [],
-        rawJson = json;
+        rawJson = json,
+        departures = json['properties']['trip_count'];
   const TransitRoute({
     required this.id,
     required this.stopIds,
@@ -25,6 +28,7 @@ class TransitRoute{
     required this.routeId,
     required this.polyline,
     this.rawJson,
+    required this.departures,
   });
 
   // Convert a Dog into a Map. The keys must correspond to the names of the
@@ -54,7 +58,9 @@ class TransitRoute{
         i++;
       }
     }
-    print('TOTAL ROUTES LOADED ${i-1}');
+    if (kDebugMode) {
+      print('TOTAL ROUTES LOADED ${i-1}');
+    }
     return ret;
   }
 }

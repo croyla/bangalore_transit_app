@@ -142,7 +142,9 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
               TransitStop next = transferLine[current]![0];
               line.add(next);
               lineRoute[next] = transferLine[current]![1];
-              print('${next.name} ➡️ ${lineRoute[next]?.name} ➡️ ${current?.name}');
+              if (kDebugMode) {
+                print('${next.name} ➡️ ${lineRoute[next]?.name} ➡️ ${current?.name}');
+              }
               current = next;
             } else {
               break;
@@ -184,7 +186,7 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
                 // print('Near ${stop.name} is ${nearby.name}');
                 transferLine2[nearby] = [stop,
                   TransitRoute(id: -1, stopIds: [stop, nearby], name: 'Walk ${stop.name} ➡ ${nearby.name}', routeId: 'walk', polyline: [
-                    stop.marker, geodesy.midPointBetweenTwoGeoPoints(stop.marker, nearby.marker), nearby.marker])];
+                    stop.marker, geodesy.midPointBetweenTwoGeoPoints(stop.marker, nearby.marker), nearby.marker], departures: 0)];
                 recursiveSearch(transferCount+1, nearby, route, transferLine2);
               }
             }
@@ -203,6 +205,11 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
     }
   }
   List<List<RouteSuggestion>> suggestions = [];
+  // TODO: Allow options
+  // e.g transfers/routes that only take you closer to end stop
+  // Limit routes to a certain number
+  // TODO: prevent duplicates like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB])
+  // Note: instances like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB, routeC]) are not considered duplicates for this
   void compileLines(List<RouteSuggestion> currentLine, TransitStop? previousStop, TransitStop currentStop){
     if(lines.keys.contains(previousStop)) { // try with null? will add null safety if needed
       if(lines[previousStop]!.keys.contains(currentStop)) { // better be safe :P

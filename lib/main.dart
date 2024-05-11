@@ -45,7 +45,18 @@ class Data {
   static List<TransitStop> stops = [];
   static List<TransitRoute> routes = [];
   static Geodesy geodesy = Geodesy();
-  static void completeMappings() async {
+  static void updateData() {
+    for (TransitStop stop in stops){
+      if(stop.routeIds.isEmpty || stop.routeIds == [] || stop.routeIds.length == 0){
+        print('removing ${stop.name} ${stop.stopId}');
+        Data.stops.remove(stop);
+      } else {
+        stop.routeIds.sort((TransitRoute a, TransitRoute b) =>
+            a.departures.compareTo(b.departures));
+      }
+    }
+  }
+  static void completeMappings() {
     Map<String, List<TransitStop>> stopNames = {};
     Map<String, TransitRoute> routeNames = {};
     for (TransitStop stop in stops){
@@ -94,8 +105,12 @@ class Data {
       }
     }
     for (TransitStop stop in stops){
-      if(stop.routeIds.isEmpty){
-        stops.remove(stop);
+      if(stop.routeIds.isEmpty || stop.routeIds == [] || stop.routeIds.length == 0){
+        print('removing ${stop.name} ${stop.stopId}');
+        Data.stops.remove(stop);
+      } else {
+        stop.routeIds.sort((TransitRoute a, TransitRoute b) =>
+            a.departures.compareTo(b.departures));
       }
     }
     if (kDebugMode) {
