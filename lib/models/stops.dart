@@ -1,5 +1,6 @@
 
 
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:transit_app/models/routes.dart';
 
@@ -51,7 +52,9 @@ class TransitStop {
         i++;
       }
     }
-    print('TOTAL STOPS LOADED: ${i-1}');
+    if (kDebugMode) {
+      print('TOTAL STOPS LOADED: ${i-1}');
+    }
     return ret;
   }
 }
