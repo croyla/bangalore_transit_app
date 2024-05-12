@@ -22,6 +22,7 @@ void main()  async {
   // NEED TO FIX METRO DATA
   Data.routes.addAll(routesFromJson);
   Data.stops.addAll(stopsFromJson);
+  Future.delayed(const Duration(milliseconds: 250));
   Data.completeMappings();
 }
 
@@ -47,13 +48,16 @@ class Data {
   static Geodesy geodesy = Geodesy();
   static void updateData() {
     for (TransitStop stop in stops){
-      if(stop.routeIds.isEmpty || stop.routeIds == [] || stop.routeIds.length == 0){
+      if(stop.routeIds.isEmpty || stop.routeIds == []){
         print('removing ${stop.name} ${stop.stopId}');
         Data.stops.remove(stop);
       } else {
         stop.routeIds.sort((TransitRoute a, TransitRoute b) =>
             a.departures.compareTo(b.departures));
       }
+    }
+    if (kDebugMode) {
+      print('TOTAL STOPS IN USE ${Data.stops.length}');
     }
   }
   static void completeMappings() {
@@ -105,7 +109,7 @@ class Data {
       }
     }
     for (TransitStop stop in stops){
-      if(stop.routeIds.isEmpty || stop.routeIds == [] || stop.routeIds.length == 0){
+      if(stop.routeIds.isEmpty || stop.routeIds == []){
         print('removing ${stop.name} ${stop.stopId}');
         Data.stops.remove(stop);
       } else {

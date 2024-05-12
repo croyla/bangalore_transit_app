@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tappable_polyline/flutter_map_tappable_polyline.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geodesy/geodesy.dart';
 import 'package:transit_app/main.dart';
 import 'package:transit_app/models/stops.dart';
@@ -25,6 +26,8 @@ class _HomePageState extends State<HomePage> {
   String _point = 'Start';
   String _info1 = '';
   String _info2 = '';
+  double _walkingDistanceMtr = 75;
+  int _maxTransfers = 1;
   TransitStop? _start;
   TransitStop? _end;
   final MapController mapController = MapController();
@@ -32,20 +35,24 @@ class _HomePageState extends State<HomePage> {
   final Map<TaggedPolyline, List<RouteSuggestion>> _polylineJourney = {};
   final Map<Marker, TransitStop> _markers = {};
   Geodesy geodesy = Data.geodesy;
+  bool _closeStop = true;
+  Image? busStop;
+
+
+
   /* Clear map points and lines, set _point to default */
   void _clearMap() {
     Data.updateData();
+    busStop ??= const Image(image: AssetImage('assets/bus-stop.png'));
     setState(() {
       _markers.clear();
       for(TransitStop stop in Data.stops){
         _markers[
         Marker(point: stop.marker,
-            width: 24,
-            height: 24,
+            width: 5,
+            height: 5,
             child: const Icon(
-              Icons.airline_stops_sharp,
-              size: 24,
-              color: Colors.black,
+              FontAwesomeIcons.mapPin // Slows to a halt when using Image()
             )
         )
         ] = stop;
@@ -57,6 +64,9 @@ class _HomePageState extends State<HomePage> {
       _end = null;
     });
   }
+
+
+
   /* capture current point, move to capture next point / render visualizations */
   void _setPoint() {
     setState(() {
@@ -76,11 +86,9 @@ class _HomePageState extends State<HomePage> {
         _markers[
             Marker(
               point: _start!.marker,
-              width: 10,
-              height: 15,
-              child: Container(
-                color: Colors.black,
-              )
+              width: 20,
+              height: 20,
+              child: busStop!
             )
         ] = nearest!;
         _point = 'End';
@@ -89,11 +97,9 @@ class _HomePageState extends State<HomePage> {
         _markers[
             Marker(
                 point: _end!.marker,
-                width: 10,
-                height: 15,
-                child: Container(
-                  color: Colors.black,
-                )
+                width: 20,
+                height: 20,
+                child: busStop!
             )
         ] = nearest!;
         _updateOnMap();
@@ -104,8 +110,11 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
+
+
+
   void _updateOnMap() async {
-    List<List<RouteSuggestion>> journeys = await getRoutes(2, 100, _start!, _end!); // all time is taken here
+    List<List<RouteSuggestion>> journeys = await getRoutes(_maxTransfers, _walkingDistanceMtr, _start!, _end!, _closeStop); // all time is taken here
     setState(() {
       if(!mounted){
         if (kDebugMode) {
@@ -126,22 +135,18 @@ class _HomePageState extends State<HomePage> {
           }
           _markers[Marker(
               point: suggestion.start.marker,
-              width: 7,
-              height: 7,
-              child: Container(
-                  color: Colors.green
-              )
+              width: 20,
+              height: 20,
+              child: busStop!
           )] = suggestion.start;
           _markers[Marker(
               point: suggestion.end.marker,
               width: 7,
               height: 7,
-              child: Container(
-                  color: Colors.blue
-              )
+              child: busStop!
           )] = suggestion.end;
           TaggedPolyline polyline = TaggedPolyline(points: // add random to see multiple different journeys
-          [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 100000), point.longitude + (random / 100000))],
+          [for(LatLng point in suggestion.polyline) LatLng(point.latitude + (random / 500000), point.longitude + (random / 500000))],
               color: color, strokeWidth: 4);
           _polylines[polyline] = suggestion;
           _polylineJourney[polyline] = suggestions;
@@ -154,16 +159,23 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
+
+
   void polylineInfo(polylines, position) {
+    // TODO: Make this better, to show information in a collapsible format and to show information on routes as well when clicked
     setState(() {
       RouteSuggestion info = _polylines[polylines[0]]!;
-      _info1 = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in info.lines) '${line.name},']}';
+      _info1 = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in (info.lines.length > 5 ? info.lines.sublist(0, 5) : info.lines)) '${line.name},']}';
       _info2 =
-              '${_polylineJourney[polylines[0]]![0].start.name}'
-                  ' ➡️ ${[for (RouteSuggestion suggestion in _polylineJourney[polylines[0]]!)
-                    '${suggestion.end.name} via ${[for (TransitRoute line in suggestion.lines) '${line.name}, ']} ➡️']}';
+        '${[for (RouteSuggestion suggestion in _polylineJourney[polylines[0]]!)
+          '${suggestion.start.name} #️⃣ '
+              '${[for (TransitRoute line in (suggestion.lines.length > 5 ? suggestion.lines.sublist(0, 5) : suggestion.lines)) '${line.name}, ']} '
+              '➡️']}' // 5 most frequent buses to prevent flooding the screen
+            ' ${_polylineJourney[polylines[0]]![_polylineJourney[polylines[0]]!.length-1].end.name}';
     });
   }
+
+
   void _markerInfo(TapPosition position, LatLng location){
     Marker? toDisplay;
     for(Marker marker in _markers.keys){
@@ -182,6 +194,9 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
+
+
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called
@@ -195,6 +210,78 @@ class _HomePageState extends State<HomePage> {
             .colorScheme
             .inversePrimary,
         title: Text(widget.title),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          // Important: Remove any padding from the ListView.
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text('Options'),
+            ),
+            ListTile(
+              leading: Checkbox(value: _closeStop, onChanged: (value) => setState(() {
+                if(value != null){
+                  _closeStop = value;
+                }
+              })),
+              title: const Text('Closer Stops Only'),
+              onTap: () => setState(() {
+                _closeStop = !_closeStop;
+              }),
+            ),
+            ListTile(
+              leading: Text(_walkingDistanceMtr.toString()),
+              // TextField(
+              //   decoration: const InputDecoration(
+              //     border: UnderlineInputBorder(),
+              //   ),
+              //   inputFormatters: <TextInputFormatter>[
+              //     FilteringTextInputFormatter.allow(RegExp(r"[0-9.]")),
+              //   ],
+              //   keyboardType: const TextInputType.numberWithOptions(
+              //     signed: false,
+              //     decimal: true,
+              //   ),
+              // ),
+              title:  Slider(
+                value: _walkingDistanceMtr,
+                onChanged: (double value) => setState(() {
+                  _walkingDistanceMtr = double.parse(value.toStringAsFixed(1));
+                }),
+                min: 0.5,
+                max: 500,
+                divisions: 5000,
+              ),
+              subtitle: const Text('Walking Distance in Meters'),
+            ),
+            ListTile(
+              leading: Text(_maxTransfers.toString()),
+              // TextField(
+              //   decoration: const InputDecoration(
+              //     border: UnderlineInputBorder(),
+              //   ),
+              //   inputFormatters: <TextInputFormatter>[
+              //     FilteringTextInputFormatter.allow(RegExp(r"[0-9]")),
+              //   ],
+              //   keyboardType: const TextInputType.number(),
+              // ),
+              subtitle: const Text('Maximum Transfers'),
+              title:  Slider(
+                value: _maxTransfers.toDouble(),
+                onChanged: (double value) => setState(() {
+                  _maxTransfers = value.toInt();
+                }),
+                min: 0,
+                max: 5,
+                divisions: 6,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Center(
         child: Column(
@@ -220,6 +307,10 @@ class _HomePageState extends State<HomePage> {
                           'OpenStreetMap contributors',
                           onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
                         ),
+                        TextSourceAttribution(
+                          'Bus Icon by mavadee - Flaticon',
+                          onTap: () => launchUrl(Uri.parse('https://www.flaticon.com/free-icons/bus-stop')),
+                        )
                       ]
                   ),
                   TappablePolylineLayer(
