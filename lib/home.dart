@@ -234,7 +234,7 @@ class _HomePageState extends State<HomePage> {
               }),
             ),
             ListTile(
-              leading: Text(_walkingDistanceMtr.toString()),
+              leading: Text(_walkingDistanceMtr.toString()), // Make this editable
               // TextField(
               //   decoration: const InputDecoration(
               //     border: UnderlineInputBorder(),

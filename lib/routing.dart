@@ -175,7 +175,9 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
             // Need this to prevent transfers like:
             // Main road bus stop a -> side road bus stop (actual distance closer to bus stop b, but distance travelled is longer) -> Main road bus stop b
             if((closeStops) &&
-                (geodesy.distanceBetweenTwoGeoPoints(stop.marker, end.marker) > geodesy.distanceBetweenTwoGeoPoints(currentStop.marker, end.marker))){
+                ((geodesy.distanceBetweenTwoGeoPoints(stop.marker, end.marker) > geodesy.distanceBetweenTwoGeoPoints(currentStop.marker, end.marker)) ||
+                geodesy.distanceBetweenTwoGeoPoints(stop.marker, end.marker) > geodesy.distanceBetweenTwoGeoPoints( // trial
+                geodesy.midPointBetweenTwoGeoPoints(currentStop.marker, end.marker), end.marker))){
               continue;
             }
             if(route.stopIds.indexOf(stop) > route.stopIds.indexOf(currentStop)){ // Only stops after this stop should be considered in route
@@ -217,10 +219,13 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
   List<List<RouteSuggestion>> suggestions = [];
   // TODO: prevent duplicates like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB])
   // Note: instances like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB, routeC]) are not considered duplicates for this
+  // Ideally this fix would happen in routing, but its too much work for me to put in at the moment, i hope to revisit routing and rewrite it to work better with these changes in mind but for now it will be done here.
   void compileLines(List<RouteSuggestion> currentLine, TransitStop? previousStop, TransitStop currentStop){
     if(lines.keys.contains(previousStop)) { // try with null? will add null safety if needed
       if(lines[previousStop]!.keys.contains(currentStop)) { // better be safe :P
-        currentLine.add(lines[previousStop]![currentStop]!);
+        if(!currentLine.contains(lines[previousStop]![currentStop]!)) {
+          currentLine.add(lines[previousStop]![currentStop]!);
+        }
       }
     }
     if(ends.contains(currentStop)){
@@ -238,6 +243,32 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
   }
   for(TransitStop stop in starts){
     compileLines([], null, stop);
+  }
+  Map<int, List<List<TransitRoute>>> indexedTransfers = {};
+  for(List<RouteSuggestion> suggestion in suggestions){
+    List<TransitRoute>? previousRouteList;
+    int index = 0;
+    bool allSame = true;
+    for(RouteSuggestion transfer in suggestion){
+      indexedTransfers[index] ??= [];
+      if(!indexedTransfers[index]!.contains(transfer.lines)){
+        allSame = false;
+        indexedTransfers[index]!.add(transfer.lines);
+      }
+      index++;
+      if(previousRouteList == transfer.lines){ // Remove one kind of duplicate, stopA.lines[routeA] -> stopB.lines[routeA]
+        suggestions.remove(suggestion);
+        allSame = false; // removed from here, can not double remove
+        break;
+      }
+      previousRouteList = transfer.lines;
+    }
+    if(allSame){
+      if(kDebugMode){
+        print('Duplicate detected');
+      }
+      suggestions.remove(suggestion);
+    }
   }
   return suggestions;
 }
