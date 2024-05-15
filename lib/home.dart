@@ -2,7 +2,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tappable_polyline/flutter_map_tappable_polyline.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -86,8 +85,8 @@ class _HomePageState extends State<HomePage> {
         _markers[
             Marker(
               point: _start!.marker,
-              width: 20,
-              height: 20,
+              width: 50,
+              height: 50,
               child: busStop!
             )
         ] = nearest!;
@@ -138,14 +137,14 @@ class _HomePageState extends State<HomePage> {
           }
           _markers[Marker(
               point: suggestion.start.marker,
-              width: 20,
-              height: 20,
+              width: 50,
+              height: 50,
               child: busStop!
           )] = suggestion.start;
           _markers[Marker(
               point: suggestion.end.marker,
-              width: 7,
-              height: 7,
+              width: 50,
+              height: 50,
               child: busStop!
           )] = suggestion.end;
           TaggedPolyline polyline = TaggedPolyline(points: // add random to see multiple different journeys
