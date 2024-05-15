@@ -2,6 +2,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tappable_polyline/flutter_map_tappable_polyline.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -24,8 +25,6 @@ State<HomePage> createState() => _HomePageState();
 
 class _HomePageState extends State<HomePage> {
   String _point = 'Start';
-  String _info1 = '';
-  String _info2 = '';
   double _walkingDistanceMtr = 75;
   int _maxTransfers = 1;
   TransitStop? _start;
@@ -37,6 +36,8 @@ class _HomePageState extends State<HomePage> {
   Geodesy geodesy = Data.geodesy;
   bool _closeStop = true;
   Image? busStop;
+  Row routeInfoRow = const Row();
+  OverlayEntry? informationOverlay;
 
 
 
@@ -66,7 +67,6 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-
   /* capture current point, move to capture next point / render visualizations */
   void _setPoint() {
     setState(() {
@@ -92,6 +92,9 @@ class _HomePageState extends State<HomePage> {
             )
         ] = nearest!;
         _point = 'End';
+        if(informationOverlay != null){
+          createStopOverlay(_start!);
+        }
       } else if(_point == 'End') {
         _end = nearest;
         _markers[
@@ -102,6 +105,9 @@ class _HomePageState extends State<HomePage> {
                 child: busStop!
             )
         ] = nearest!;
+        if(informationOverlay != null){
+          createStopOverlay(_end!);
+        }
         _updateOnMap();
         // _polylines.add(
         //   Polyline(points: [_start!.marker, _end!.marker], color: Colors.redAccent) // TEST
@@ -115,12 +121,9 @@ class _HomePageState extends State<HomePage> {
 
   void _updateOnMap() async {
     List<List<RouteSuggestion>> journeys = await getRoutes(_maxTransfers, _walkingDistanceMtr, _start!, _end!, _closeStop); // all time is taken here
+    removeOverlay();
     setState(() {
-      if(!mounted){
-        if (kDebugMode) {
-          print('??? CONFUSION');
-        }
-      }
+      assert(mounted);
       _markers.clear();
       for(List<RouteSuggestion> suggestions in journeys){
         if (kDebugMode) {
@@ -156,23 +159,14 @@ class _HomePageState extends State<HomePage> {
       if(journeys.isNotEmpty) {
         mapController.move(
             journeys[0][0].start.marker, mapController.camera.zoom);
+        createJourneyOverlay(journeys[0], journeys[0][0]);
       }
     });
   }
 
 
   void polylineInfo(polylines, position) {
-    // TODO: Make this better, to show information in a collapsible format and to show information on routes as well when clicked
-    setState(() {
-      RouteSuggestion info = _polylines[polylines[0]]!;
-      _info1 = '${info.start.name} ➡️ ${info.end.name} via ${[for (TransitRoute line in (info.lines.length > 5 ? info.lines.sublist(0, 5) : info.lines)) '${line.name},']}';
-      _info2 =
-        '${[for (RouteSuggestion suggestion in _polylineJourney[polylines[0]]!)
-          '${suggestion.start.name} #️⃣ '
-              '${[for (TransitRoute line in (suggestion.lines.length > 5 ? suggestion.lines.sublist(0, 5) : suggestion.lines)) '${line.name}, ']} '
-              '➡️']}' // 5 most frequent buses to prevent flooding the screen
-            ' ${_polylineJourney[polylines[0]]![_polylineJourney[polylines[0]]!.length-1].end.name}';
-    });
+    createJourneyOverlay(_polylineJourney[polylines[0]]!, _polylines[polylines[0]]!);
   }
 
 
@@ -187,14 +181,291 @@ class _HomePageState extends State<HomePage> {
       }
     }
     if(toDisplay != null){
-      print('${_markers[toDisplay]!.name} ${_markers[toDisplay]!.stopId} is empty? ${_markers[toDisplay]!.routeIds.isEmpty}');
-      setState(() {
-        _info1 = 'Stop Name: ${_markers[toDisplay]!.name}';
-        _info2 = 'Routes: ${[for(TransitRoute route in _markers[toDisplay]!.routeIds) '${route.name}, ']}';
-      });
+      createStopOverlay(_markers[toDisplay]!);
     }
   }
 
+
+  void removeOverlay(){
+    informationOverlay?.remove();
+    informationOverlay?.dispose();
+    informationOverlay = null;
+  }
+
+  void createStopOverlay(TransitStop stop){
+    mapController.move(stop.marker, mapController.camera.zoom);
+    removeOverlay();
+    assert(informationOverlay == null);
+    informationOverlay = OverlayEntry(builder: (BuildContext context) {
+      return Container(
+        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        child: Card(
+          elevation: 3.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 50, child: ListView(scrollDirection: Axis.horizontal, children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: removeOverlay,
+                      style: TextButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                      child: const Text('❌'),
+                    ),
+
+                    Text('${stop.name} (${stop.stopId})'),
+                    TextButton(
+                      onPressed: _setPoint,
+                      child: Text('Add $_point'),
+                    ),
+                  ],
+                ),
+              ])
+              ),
+
+              Expanded(child:
+              ListView(
+                scrollDirection: Axis.vertical,
+                    children: [
+                      for (TransitRoute route in stop.routeIds)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              TextButton(
+                                onPressed: () => createRouteOverlay(route),
+                                child: Text(route.name)
+                              ),
+                              const Text(' to '),
+                              TextButton(
+                                  onPressed: () => createStopOverlay(route.stopIds[route.stopIds.length-1]),
+                                  child: Text(route.stopIds[route.stopIds.length-1].name)
+                              ),
+                            ],
+                          ),
+                        ],
+                  ),
+        )
+            ],
+          ),
+        ),
+      );
+    });
+    Overlay.of(context).insert(informationOverlay!);
+  }
+
+  void drawRoute(TransitRoute route){
+
+  }
+
+  void createRouteOverlay(TransitRoute route){
+    removeOverlay();
+    assert(informationOverlay == null);
+    informationOverlay = OverlayEntry(builder: (BuildContext context) {
+      return Container(
+        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        child: Card(
+          elevation: 3.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+          SizedBox(height: 50, child: ListView(scrollDirection: Axis.horizontal, children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: removeOverlay,
+                  style: TextButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  child: const Text('❌'),
+                ),
+                Text('${route.id}. ${route.name} ${route.stopIds[0].name} -> ${route.stopIds[route.stopIds.length-1].name} ${route.routeId}')
+              ],
+            ),
+
+          ]
+          )
+          ),
+              const SizedBox(height: 10),
+              Expanded(child:
+              ListView(
+                scrollDirection: Axis.vertical,
+                children: [
+                  for (TransitStop stop in route.stopIds)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        TextButton(
+                            onPressed: () => createStopOverlay(stop),
+                            child: Text('${route.stopIds.indexOf(stop)+1}. ${stop.name}')
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              )
+            ],
+          ),
+        ),
+      );
+    });
+    Overlay.of(context).insert(informationOverlay!);
+  }
+
+  void createJourneysOverlay({List<RouteSuggestion>? highlighted}){
+    removeOverlay();
+    assert(informationOverlay == null);
+    List<Row> widgets = [];
+    for(List<RouteSuggestion> journey in _polylineJourney.values){
+      widgets.add(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+            for(RouteSuggestion suggestion in journey)
+              journey == highlighted ?
+              TextButton(
+                  onPressed: () => createJourneyOverlay(journey, suggestion),
+                  style: TextButton.styleFrom(backgroundColor: Colors.indigoAccent.withOpacity(0.15)),
+                  child: Text('${suggestion.start.name} to ${suggestion.end.name}')
+              )
+                  :
+              TextButton(
+                onPressed: () => createJourneyOverlay(journey, suggestion),
+                child: Text('${suggestion.start.name} to ${suggestion.end.name}')
+              )
+          ]
+      ));
+    }
+    informationOverlay = OverlayEntry(builder: (BuildContext context) {
+      return Container(
+        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        child: Card(
+          elevation: 3.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 50, child: ListView(scrollDirection: Axis.horizontal, children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: removeOverlay,
+                      style: TextButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                      child: const Text('❌'),
+                    ),
+                    const Text('All Routes')
+                  ],
+                ),
+
+              ]
+              )
+              ),
+              const SizedBox(height: 10),
+              Expanded(child:
+              ListView(
+                scrollDirection: Axis.vertical, children: widgets,
+              ),
+              )
+            ],
+          ),
+        ),
+      );
+    });
+    Overlay.of(context).insert(informationOverlay!);
+  }
+  
+  void createJourneyOverlay(List<RouteSuggestion> suggestions, RouteSuggestion primary){
+    removeOverlay();
+    assert(informationOverlay == null);
+    informationOverlay = OverlayEntry(builder: (BuildContext context) {
+      return Container(
+        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        child:
+          Card(
+            elevation: 3.0,
+            child:
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 50, child:
+                      ListView(
+                        scrollDirection: Axis.horizontal,
+
+                        children: [
+                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            TextButton(
+                              onPressed: removeOverlay,
+                              style: TextButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                              child: const Text('❌'),
+
+                            ),
+                            TextButton(onPressed: () => createStopOverlay(primary.start), child: Text(primary.start.name)),
+                            const Text(' to '),
+                            TextButton(onPressed: () => createStopOverlay(primary.end), child: Text(primary.end.name)),
+                            TextButton(
+                                onPressed: () => createJourneysOverlay(highlighted: suggestions), 
+                                style: TextButton.styleFrom(backgroundColor: Colors.greenAccent), 
+                                child: const Text('Show All Routes'),
+                            ),
+                          ],
+                          ),
+                        ],
+                      ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(height: 50, child:
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(child:
+                          ListView(scrollDirection: Axis.horizontal, children: [
+                            for(RouteSuggestion suggestion in suggestions)
+                              suggestion == primary ?
+                              TextButton(
+                                  onPressed: () => createJourneyOverlay(suggestions, suggestion),
+                                  style: TextButton.styleFrom(backgroundColor: Colors.amber),
+                                  child: Text('${suggestions.indexOf(suggestion)+1}. ${suggestion.start.name} to ${suggestion.end.name}')
+                              ) :
+                              TextButton(
+                                  onPressed: () => createJourneyOverlay(suggestions, suggestion),
+                                  child: Text('${suggestions.indexOf(suggestion)+1}. ${suggestion.start.name} to ${suggestion.end.name}')
+                              )
+                          ],
+                          )
+                        )
+
+                      ]
+                    ),
+                  ),
+                  Expanded(child:
+                    ListView(
+                        scrollDirection: Axis.vertical,
+                        children: [
+                          for (TransitRoute route in primary.lines)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                TextButton(
+                                    onPressed: () => createRouteOverlay(route),
+                                    child: Text('${primary.lines.indexOf(route)+1}. ${route.name}')
+                                ),
+                                const Text(' towards '),
+                                TextButton(
+                                    onPressed: () => createStopOverlay(route.stopIds[route.stopIds.length-1]),
+                                    child: Text(route.stopIds[route.stopIds.length-1].name)
+                                )
+                              ],
+                            ),
+                        ],
+                    ),
+                  )
+                ],
+              ),
+          ),
+      );
+    });
+    Overlay.of(context, debugRequiredFor: widget).insert(informationOverlay!);
+
+  }
 
 
   @override
@@ -288,7 +559,7 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Expanded(
-              flex: 70,
+              flex: 85,
               child: FlutterMap(
                 mapController: mapController,
                 options: MapOptions(
@@ -346,8 +617,6 @@ class _HomePageState extends State<HomePage> {
                 child: const Text('Clear map'),
               ),
             ),
-            Expanded(flex: 5, child: Text(_info1)),
-            Expanded(flex: 10, child: Text(_info2)),
           ],
         ),
       ),
