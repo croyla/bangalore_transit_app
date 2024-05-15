@@ -14,14 +14,16 @@ void main()  async {
   runApp(app);
   final stopJson = jsonDecode(await rootBundle.loadString('assets/stops.geojson')) as Map<String, dynamic>;
   final routeJson = jsonDecode(await rootBundle.loadString('assets/routes.geojson')) as Map<String, dynamic>;
-  // final metroJson = jsonDecode(await rootBundle.loadString('assets/metro-lines-stations-2024-for-use.geojson')) as Map<String, dynamic>;
+  final metroJson = jsonDecode(await rootBundle.loadString('assets/metro-lines-stations-2024-for-use.geojson')) as Map<String, dynamic>;
   List<TransitStop> stopsFromJson =  TransitStop.fromGeoJSON(stopJson);
   List<TransitRoute> routesFromJson = TransitRoute.fromGeoJSON(routeJson);
-  // routesFromJson.addAll(TransitRoute.fromGeoJSON(metroJson));
-  // stopsFromJson.addAll(TransitStop.fromGeoJSON(metroJson));
+  routesFromJson.addAll(TransitRoute.fromGeoJSON(metroJson));
+  stopsFromJson.addAll(TransitStop.fromGeoJSON(metroJson));
   // NEED TO FIX METRO DATA
   Data.routes.addAll(routesFromJson);
   Data.stops.addAll(stopsFromJson);
+  // print(Data.stops);
+  // print(Data.routes);
   Future.delayed(const Duration(milliseconds: 250));
   Data.completeMappings();
 }
@@ -31,12 +33,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BMTC Demo :P',
+      title: 'Transit Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomePage(title: 'HALLO :D'),
+      home: const HomePage(title: 'blr;transit'),
     );
   }
 }
@@ -54,6 +56,12 @@ class Data {
       } else {
         stop.routeIds.sort((TransitRoute a, TransitRoute b) =>
             a.departures.compareTo(b.departures));
+      }
+    }
+    for (TransitRoute route in routes){
+      if(route.stopIds.isEmpty){
+        print('removing ${route.name} ${route.routeId}');
+        Data.routes.remove(route);
       }
     }
     if (kDebugMode) {
@@ -115,6 +123,12 @@ class Data {
       } else {
         stop.routeIds.sort((TransitRoute a, TransitRoute b) =>
             a.departures.compareTo(b.departures));
+      }
+    }
+    for (TransitRoute route in routes){
+      if(route.stopIds.isEmpty){
+        print('removing ${route.name} ${route.routeId}');
+        Data.routes.remove(route);
       }
     }
     if (kDebugMode) {
