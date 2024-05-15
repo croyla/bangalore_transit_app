@@ -7,8 +7,11 @@ A highly unoptimized unusable application built in flutter. The goal of this app
 
 # To-Do
 ### (in no particular order)
- - [ ] Add widgets to modify walking distance parameter, max transfers parameter, etc.
- - [ ] Implement a database for data storage as opposed to the current (always reading from) geojson implementation
+ - [ ] Use sharedprefs for Maximum Transfers, Walking Distance
+ - [ ] Prevent duplicate journeys in getRoutes
+ - [ ] Use OSRM or something similar for getNearbyStops, and walk polyline
+ - [ ] Implement a local database for data storage as opposed to the current (always reading from) geojson implementation
  - [ ] Modify metro data to be able to be parsed correctly by application
+ - [ ] Parse geojson info into the application more accurately (relations between stops and routes are a bit goofy at the moment)
  - [ ] Store timing information where available to display as well
  - [ ] SIFT THROUGH AND CLEAN GTFS DATA!!!

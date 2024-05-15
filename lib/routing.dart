@@ -73,7 +73,7 @@ RouteSuggestion? createSuggestion(TransitStop start, TransitStop end, List<Trans
   // currently inaccurate with multiple TransitRoutes that go to same stop from different polylines, need to improve
 }
 
-Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDistance, TransitStop start, TransitStop end) async {
+Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDistance, TransitStop start, TransitStop end, bool closeStops) async {
   List<TransitStop> ends = getNearbyStops(walkingDistance, end);
   List<TransitStop> starts = getNearbyStops(walkingDistance, start);
   Map<TransitStop, Map<TransitStop,RouteSuggestion>> lines = {}; // first dimension start and second dimension stop
@@ -124,12 +124,10 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
       Map<TransitStop, int> checked = {};
       void recursiveSearch(int transferCount, TransitStop currentStop, TransitRoute? previousRoute, Map<TransitStop, List<dynamic>>? transferLine){ // List<dynamic> is [transitstop, transitroute]
         int maxTransferPossible = maxTransfers - transferCount;
+        maxTransferPossible++; // increment by one as we check transfer limit at the start of the method, not the end.
         transferLine ??= {};
         if(checked.containsKey(currentStop) && checked[currentStop]! >= maxTransferPossible){
           return; // already checked this stop with a greater or equivalent maxTransferPossible
-        }
-        else if(maxTransferPossible <= 0){
-          return; // exhausted transfer limit
         }
         else if(ends.contains(currentStop)){ // End stop reached, now construct route
           // Got to generate from transferLine
@@ -164,10 +162,24 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
           }
           return;
         }
+        else if(maxTransferPossible <= 0){
+          return; // exhausted transfer limit
+        }
+
         checked[currentStop] = maxTransferPossible;
         // getNearbyStops loop here, encapsulating it all
         for(TransitRoute route in currentStop.routeIds){ // all routes coming to stop
           for(TransitStop stop in route.stopIds){ // all stops on route
+
+            // TODO: Use a method that defines the distance to the stop from the bus polyline, so its distance travelled not actual distance
+            // Need this to prevent transfers like:
+            // Main road bus stop a -> side road bus stop (actual distance closer to bus stop b, but distance travelled is longer) -> Main road bus stop b
+            if((closeStops) &&
+                ((geodesy.distanceBetweenTwoGeoPoints(stop.marker, end.marker) > geodesy.distanceBetweenTwoGeoPoints(currentStop.marker, end.marker)) ||
+                geodesy.distanceBetweenTwoGeoPoints(stop.marker, end.marker) > geodesy.distanceBetweenTwoGeoPoints( // trial
+                geodesy.midPointBetweenTwoGeoPoints(currentStop.marker, end.marker), end.marker))){
+              continue;
+            }
             if(route.stopIds.indexOf(stop) > route.stopIds.indexOf(currentStop)){ // Only stops after this stop should be considered in route
               Map<TransitStop, List<dynamic>> transferLine2 = Map.from(transferLine); // duplicate the list to avoid modifications in different branches of recursion messing with each other
               if(route != previousRoute){ // first stop its route != null
@@ -193,7 +205,7 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
           }
         }
       } // recursiveSearch
-      recursiveSearch(-1, start, null, null);
+      recursiveSearch(0, start, null, null);
     } else {
       for(TransitRoute route in start.routeIds) {
         for (TransitStop end in ends) {
@@ -205,15 +217,15 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
     }
   }
   List<List<RouteSuggestion>> suggestions = [];
-  // TODO: Allow options
-  // e.g transfers/routes that only take you closer to end stop
-  // Limit routes to a certain number
   // TODO: prevent duplicates like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB])
   // Note: instances like (stopA.lines[routeA], stopB.lines[routeB]), (stopA.lines[routeA], stopC.lines[routeB, routeC]) are not considered duplicates for this
+  // Ideally this fix would happen in routing, but its too much work for me to put in at the moment, i hope to revisit routing and rewrite it to work better with these changes in mind but for now it will be done here.
   void compileLines(List<RouteSuggestion> currentLine, TransitStop? previousStop, TransitStop currentStop){
     if(lines.keys.contains(previousStop)) { // try with null? will add null safety if needed
       if(lines[previousStop]!.keys.contains(currentStop)) { // better be safe :P
-        currentLine.add(lines[previousStop]![currentStop]!);
+        if(!currentLine.contains(lines[previousStop]![currentStop]!)) {
+          currentLine.add(lines[previousStop]![currentStop]!);
+        }
       }
     }
     if(ends.contains(currentStop)){
@@ -225,17 +237,45 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
       }
     } else{
        if (kDebugMode) {
-         print('FACING ISSUE $lines');
+         print('FACING ISSUE ${currentStop.name}');
        }
     }
   }
   for(TransitStop stop in starts){
     compileLines([], null, stop);
   }
+  Map<int, List<List<TransitRoute>>> indexedTransfers = {};
+  for(List<RouteSuggestion> suggestion in suggestions){
+    List<TransitRoute>? previousRouteList;
+    int index = 0;
+    bool allSame = true;
+    for(RouteSuggestion transfer in suggestion){
+      indexedTransfers[index] ??= [];
+      if(!indexedTransfers[index]!.contains(transfer.lines)){
+        allSame = false;
+        indexedTransfers[index]!.add(transfer.lines);
+      }
+      index++;
+      if(previousRouteList == transfer.lines){ // Remove one kind of duplicate, stopA.lines[routeA] -> stopB.lines[routeA]
+        suggestions.remove(suggestion);
+        allSame = false; // removed from here, can not double remove
+        break;
+      }
+      previousRouteList = transfer.lines;
+    }
+    if(allSame){
+      if(kDebugMode){
+        print('Duplicate detected');
+      }
+      suggestions.remove(suggestion);
+    }
+  }
   return suggestions;
 }
 Map<TransitStop, List<TransitStop>> nearbyStops = {}; // if distance changes midway, app is fucked... need to improve... optionally nuke this when distance value changes?
 // Then dont take distance in method, instead define it as a variable / sharedpref option?
+
+// TODO: USE OSRM or some routing mechanism for walkable distance, not actual distance
 List<TransitStop> getNearbyStops(double distance, TransitStop stop){
   if(nearbyStops.containsKey(stop)){
     return nearbyStops[stop]!;
