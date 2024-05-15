@@ -6763,7 +6763,7 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Rashtreeya Vidyalaya Road Road",
+        "name": "Rashtreeya Vidyalaya Road",
         "description": null,
         "timestamp": null,
         "begin": null,
@@ -7219,7 +7219,7 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Swami Vivekananda Road Road",
+        "name": "Swami Vivekananda Road",
         "description": null,
         "timestamp": null,
         "begin": null,
@@ -8826,6 +8826,21 @@
         ]
       },
       "id": 85
+    },
+    {
+        "type": "Feature",
+        "properties": {
+            "name": "Hopefarm Chinnasandra",
+            "id": 81
+        },
+        "geometry": {
+            "coordinates": [
+              77.75378750091028,
+              12.987251504235132
+            ],
+            "type": "Point"
+        },
+        "id": 86
     }
   ]
 }
