@@ -1,6 +1,6 @@
 # bangalore_transit_app
 
-A highly unoptimized unusable application built in flutter. The goal of this application is to find all possible (metro / bus) lines and transfers from point a to point b. It is not optimised and needs to be tweaked to be used on a functional basis.
+A highly unoptimized unusable application built in flutter. The goal of this application is to find all possible (metro / bus) lines and transfers from point a to point b. It is not optimised and needs to be fiddled with to be used on a functional basis.
 
  - Data for BMTC from [Vonter github repo](https://github.com/Vonter/bmtc-gtfs)
  - Data for Namma Metro (BMRCL) from [geohacker github repo](https://github.com/geohacker/namma-metro?)
