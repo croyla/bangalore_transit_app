@@ -9,7 +9,6 @@
 // Each point to point directions (with transfers) is a list of routesuggestions
 // Each routesuggestion is a stop to stop polyline with buses along that route (no transfers)
 
-import 'package:collection/collection.dart'; // was used for list.average, might need later too
 import 'package:flutter/foundation.dart';
 import 'package:geodesy/geodesy.dart';
 import 'package:transit_app/models/stops.dart';
@@ -169,7 +168,7 @@ Future<List<List<RouteSuggestion>>> getRoutes(int maxTransfers, double walkingDi
         checked[currentStop] = maxTransferPossible;
         // getNearbyStops loop here, encapsulating it all
         for(TransitRoute route in currentStop.routeIds){ // all routes coming to stop
-          for(TransitStop stop in route.stopIds){ // all stops on route
+          for(TransitStop stop in List.from(route.stopIds)){ // all stops on route
 
             // TODO: Use a method that defines the distance to the stop from the bus polyline, so its distance travelled not actual distance
             // Need this to prevent transfers like:

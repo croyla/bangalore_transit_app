@@ -44,6 +44,7 @@ class _HomePageState extends State<HomePage> {
   void _clearMap() {
     Data.updateData();
     busStop ??= const Image(image: AssetImage('assets/bus-stop.png'));
+    busStop == null ? busStop = Image.asset('assets/bus-stop.png') : busStop = busStop;
     setState(() {
       _markers.clear();
       for(TransitStop stop in Data.stops){
@@ -197,7 +198,7 @@ class _HomePageState extends State<HomePage> {
     assert(informationOverlay == null);
     informationOverlay = OverlayEntry(builder: (BuildContext context) {
       return Container(
-        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        padding: const EdgeInsets.only(left: 50.0, right: 50.0, top: 50, bottom: 50),
         child: Card(
           elevation: 3.0,
           child: Column(
@@ -227,22 +228,33 @@ class _HomePageState extends State<HomePage> {
               ListView(
                 scrollDirection: Axis.vertical,
                     children: [
-                      for (TransitRoute route in stop.routeIds)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              TextButton(
+                    for (TransitRoute route in stop.routeIds)
+                      Container(
+                        decoration: BoxDecoration(
+                            border:
+                            Border.all(
+                                color: Colors.deepPurpleAccent
+                            )
+                        ),
+                        child:
+                        Wrap(
+
+                          alignment: WrapAlignment.start,
+                          children: [
+                            TextButton(
                                 onPressed: () => createRouteOverlay(route),
                                 child: Text(route.name)
-                              ),
-                              const Text(' to '),
-                              TextButton(
-                                  onPressed: () => createStopOverlay(route.stopIds[route.stopIds.length-1]),
-                                  child: Text(route.stopIds[route.stopIds.length-1].name)
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                            const Text(' to '),
+                            TextButton(
+                                onPressed: () => createStopOverlay(route.stopIds[route.stopIds.length-1]),
+                                child: Text(route.stopIds[route.stopIds.length-1].name)
+                            ),
+                          ],
+                        ),
+                      )
+
+                    ],
                   ),
         )
             ],
@@ -253,16 +265,12 @@ class _HomePageState extends State<HomePage> {
     Overlay.of(context).insert(informationOverlay!);
   }
 
-  void drawRoute(TransitRoute route){
-
-  }
-
   void createRouteOverlay(TransitRoute route){
     removeOverlay();
     assert(informationOverlay == null);
     informationOverlay = OverlayEntry(builder: (BuildContext context) {
       return Container(
-        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        padding: const EdgeInsets.only(left: 50.0, right: 50.0, top: 50, bottom: 50),
         child: Card(
           elevation: 3.0,
           child: Column(
@@ -290,8 +298,8 @@ class _HomePageState extends State<HomePage> {
                 scrollDirection: Axis.vertical,
                 children: [
                   for (TransitStop stop in route.stopIds)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    Wrap(
+                      alignment: WrapAlignment.start,
                       children: [
                         TextButton(
                             onPressed: () => createStopOverlay(stop),
@@ -313,11 +321,11 @@ class _HomePageState extends State<HomePage> {
   void createJourneysOverlay({List<RouteSuggestion>? highlighted}){
     removeOverlay();
     assert(informationOverlay == null);
-    List<Row> widgets = [];
+    List<Wrap> widgets = [];
     for(List<RouteSuggestion> journey in _polylineJourney.values){
       widgets.add(
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
+          Wrap(
+            alignment: WrapAlignment.start,
             children: [
             for(RouteSuggestion suggestion in journey)
               journey == highlighted ?
@@ -336,7 +344,7 @@ class _HomePageState extends State<HomePage> {
     }
     informationOverlay = OverlayEntry(builder: (BuildContext context) {
       return Container(
-        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        padding: const EdgeInsets.only(left: 50.0, right: 50.0, top: 50, bottom: 50),
         child: Card(
           elevation: 3.0,
           child: Column(
@@ -377,7 +385,7 @@ class _HomePageState extends State<HomePage> {
     assert(informationOverlay == null);
     informationOverlay = OverlayEntry(builder: (BuildContext context) {
       return Container(
-        padding: const EdgeInsets.only(left: 200.0, right: 200.0, top: 50, bottom: 50),
+        padding: const EdgeInsets.only(left: 50.0, right: 50.0, top: 50, bottom: 50),
         child:
           Card(
             elevation: 3.0,
@@ -440,8 +448,8 @@ class _HomePageState extends State<HomePage> {
                         scrollDirection: Axis.vertical,
                         children: [
                           for (TransitRoute route in primary.lines)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
+                            Wrap(
+                              alignment: WrapAlignment.start,
                               children: [
                                 TextButton(
                                     onPressed: () => createRouteOverlay(route),
@@ -603,14 +611,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Expanded(
-              flex: 5,
-              child: CupertinoButton(
-                onPressed: _setPoint,
-                child: Text('Add $_point'),
-              ),
-            ),
-            Expanded(
-              flex: 5,
+              flex: 10,
               child: CupertinoButton(
                 onPressed: _clearMap,
                 child: const Text('Clear map'),

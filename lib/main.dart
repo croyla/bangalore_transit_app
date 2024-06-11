@@ -19,11 +19,8 @@ void main()  async {
   List<TransitRoute> routesFromJson = TransitRoute.fromGeoJSON(routeJson);
   routesFromJson.addAll(TransitRoute.fromGeoJSON(metroJson));
   stopsFromJson.addAll(TransitStop.fromGeoJSON(metroJson));
-  // NEED TO FIX METRO DATA
   Data.routes.addAll(routesFromJson);
   Data.stops.addAll(stopsFromJson);
-  // print(Data.stops);
-  // print(Data.routes);
   Future.delayed(const Duration(milliseconds: 250));
   Data.completeMappings();
 }
@@ -116,7 +113,7 @@ class Data {
         }
       }
     }
-    for (TransitStop stop in stops){
+    for (TransitStop stop in List.from(stops)){
       if(stop.routeIds.isEmpty || stop.routeIds == []){
         print('removing ${stop.name} ${stop.stopId}');
         Data.stops.remove(stop);
@@ -125,7 +122,7 @@ class Data {
             a.departures.compareTo(b.departures));
       }
     }
-    for (TransitRoute route in routes){
+    for (TransitRoute route in List.from(routes)){
       if(route.stopIds.isEmpty){
         print('removing ${route.name} ${route.routeId}');
         Data.routes.remove(route);
